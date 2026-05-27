@@ -1,0 +1,9 @@
+[package]
+name = "caching-service"
+version = "0.1.0"
+edition = "2021"
+description = "Generic in-memory cache — LRU eviction, TTL expiration, stats tracking"
+license = "MIT"
+keywords = ["cache", "lru", "ttl", "memory"]
+
+[dependencies]
