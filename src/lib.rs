@@ -16,11 +16,17 @@ struct Entry<V> {
 impl<V> Entry<V> {
     fn new(value: V, ttl: Option<Duration>) -> Self {
         let now = Instant::now();
-        Self { value, inserted: now, ttl, last_accessed: now, access_count: 1 }
+        Self {
+            value,
+            inserted: now,
+            ttl,
+            last_accessed: now,
+            access_count: 1,
+        }
     }
 
     fn is_expired(&self) -> bool {
-        self.ttl.map_or(false, |dur| self.inserted.elapsed() > dur)
+        self.ttl.is_some_and(|dur| self.inserted.elapsed() > dur)
     }
 
     fn touch(&mut self) {
@@ -42,7 +48,9 @@ pub struct CacheStats {
 impl CacheStats {
     pub fn hit_rate(&self) -> f64 {
         let total = self.hits + self.misses;
-        if total == 0 { return 0.0; }
+        if total == 0 {
+            return 0.0;
+        }
         self.hits as f64 / total as f64
     }
 }
@@ -61,11 +69,27 @@ where
     K: std::hash::Hash + Eq + Clone,
 {
     pub fn new(capacity: usize) -> Self {
-        Self { entries: HashMap::new(), capacity, default_ttl: None, stats: CacheStats { capacity, ..Default::default() } }
+        Self {
+            entries: HashMap::new(),
+            capacity,
+            default_ttl: None,
+            stats: CacheStats {
+                capacity,
+                ..Default::default()
+            },
+        }
     }
 
     pub fn with_ttl(capacity: usize, ttl: Duration) -> Self {
-        Self { entries: HashMap::new(), capacity, default_ttl: Some(ttl), stats: CacheStats { capacity, ..Default::default() } }
+        Self {
+            entries: HashMap::new(),
+            capacity,
+            default_ttl: Some(ttl),
+            stats: CacheStats {
+                capacity,
+                ..Default::default()
+            },
+        }
     }
 
     /// Insert a key-value pair.
@@ -83,8 +107,11 @@ where
     }
 
     /// Get a value, returning None if expired or missing.
-    pub fn get(&mut self, key: &K) -> Option<V> where V: Clone {
-        let expired = self.entries.get(key).map_or(false, |e| e.is_expired());
+    pub fn get(&mut self, key: &K) -> Option<V>
+    where
+        V: Clone,
+    {
+        let expired = self.entries.get(key).is_some_and(|e| e.is_expired());
         if expired {
             self.entries.remove(key);
             self.stats.misses += 1;
@@ -103,7 +130,7 @@ where
 
     /// Check if a key exists and is not expired.
     pub fn contains(&self, key: &K) -> bool {
-        self.entries.get(key).map_or(false, |e| !e.is_expired())
+        self.entries.get(key).is_some_and(|e| !e.is_expired())
     }
 
     /// Remove a key.
@@ -121,7 +148,9 @@ where
 
     /// Purge all expired entries.
     pub fn purge_expired(&mut self) -> usize {
-        let keys: Vec<K> = self.entries.iter()
+        let keys: Vec<K> = self
+            .entries
+            .iter()
             .filter(|(_, e)| e.is_expired())
             .map(|(k, _)| k.clone())
             .collect();
@@ -135,7 +164,9 @@ where
 
     fn evict_lru(&mut self) {
         // First try to evict expired entries
-        let expired: Option<K> = self.entries.iter()
+        let expired: Option<K> = self
+            .entries
+            .iter()
             .find(|(_, e)| e.is_expired())
             .map(|(k, _)| k.clone());
         if let Some(key) = expired {
@@ -145,7 +176,9 @@ where
         }
 
         // Then evict least recently accessed
-        let lru_key = self.entries.iter()
+        let lru_key = self
+            .entries
+            .iter()
             .min_by_key(|(_, e)| e.last_accessed)
             .map(|(k, _)| k.clone());
         if let Some(key) = lru_key {
@@ -162,8 +195,12 @@ where
     }
 
     /// Current number of entries.
-    pub fn len(&self) -> usize { self.entries.len() }
-    pub fn is_empty(&self) -> bool { self.entries.is_empty() }
+    pub fn len(&self) -> usize {
+        self.entries.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.entries.is_empty()
+    }
 }
 
 #[cfg(test)]
